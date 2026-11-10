@@ -167,7 +167,8 @@ code {
 
 .field input:focus-visible,
 .submit-button:focus-visible,
-.method-note summary:focus-visible {
+.method-note summary:focus-visible,
+.method-details > summary:focus-visible {
   border-color: var(--accent);
   outline: 3px solid rgb(23 107 114 / 18%);
   outline-offset: 1px;
@@ -284,6 +285,16 @@ code {
   font-size: 22px;
 }
 
+.slope-note {
+  margin: -5px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 7px 7px 0;
+  background: var(--accent-soft);
+  color: #31525a;
+  font-size: 12px;
+}
+
 .reference-note {
   max-width: 420px;
   margin: 0;
@@ -294,7 +305,7 @@ code {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -311,9 +322,16 @@ code {
 }
 
 .summary-card h3 {
-  margin: 0 0 10px;
+  margin: 0 0 2px;
   color: var(--accent-dark);
   font-size: 13px;
+  line-height: 1.35;
+}
+
+.summary-order {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .summary-value {
@@ -344,6 +362,80 @@ code {
 
 .method-card {
   overflow: hidden;
+}
+
+.method-details > summary {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 17px;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+
+.method-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.method-details > summary::after {
+  color: var(--accent);
+  content: "+";
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.method-details[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.method-details[open] > summary::after {
+  content: "−";
+}
+
+.method-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.method-identity strong {
+  font-size: 14px;
+}
+
+.method-order {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.method-content {
+  padding: 15px 16px 16px;
+}
+
+.method-description {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.method-formulas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.method-formulas code {
+  padding: 5px 8px;
+  border: 1px solid #e3eaee;
+  border-radius: 5px;
+  background: #f8fafb;
+  color: #31485a;
+  font-size: 11px;
 }
 
 .method-card header {
@@ -436,6 +528,10 @@ tbody tr:hover {
   .number-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 520px) {
@@ -447,6 +543,12 @@ tbody tr:hover {
   .equation-fields,
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .method-identity {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1px;
   }
 
   .card-heading,

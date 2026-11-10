@@ -163,6 +163,57 @@
 
   const MAX_STEPS = 1000;
 
+  const METHODS = Object.freeze([
+    {
+      key: 'euler',
+      name: 'Euler',
+      order: 1,
+      description: 'Usa la pendiente en el punto inicial de cada paso.',
+      formulaLines: ['k₁ = f(xₙ, yₙ)', 'yₙ₊₁ = yₙ + hₙ · k₁'],
+      stageColumns: [['k1', 'k₁ · pendiente inicial']],
+    },
+    {
+      key: 'heun',
+      name: 'Euler mejorado · Heun',
+      order: 2,
+      description: 'Predice con Euler y promedia la pendiente inicial con la pendiente predicha.',
+      formulaLines: [
+        'k₁ = f(xₙ, yₙ)',
+        'zₙ₊₁ = yₙ + hₙ · k₁',
+        'k₂ = f(xₙ + hₙ, zₙ₊₁)',
+        'yₙ₊₁ = yₙ + hₙ · (k₁ + k₂) / 2',
+      ],
+      stageColumns: [['k1', 'k₁ · inicial'], ['k2', 'k₂ · predicha']],
+    },
+    {
+      key: 'rk3',
+      name: 'Runge-Kutta · RK3',
+      order: 3,
+      description: 'Combina tres pendientes con pesos 1, 4 y 1.',
+      formulaLines: [
+        'k₁ = f(xₙ, yₙ)',
+        'k₂ = f(xₙ + hₙ/2, yₙ + hₙk₁/2)',
+        'k₃ = f(xₙ + hₙ, yₙ − hₙk₁ + 2hₙk₂)',
+        'yₙ₊₁ = yₙ + hₙ · (k₁ + 4k₂ + k₃) / 6',
+      ],
+      stageColumns: [['k1', 'k₁ · inicial'], ['k2', 'k₂ · media'], ['k3', 'k₃ · final']],
+    },
+    {
+      key: 'rk4',
+      name: 'Runge-Kutta · RK4',
+      order: 4,
+      description: 'Combina cuatro pendientes; dos se evalúan en puntos medios.',
+      formulaLines: [
+        'k₁ = f(xₙ, yₙ)',
+        'k₂ = f(xₙ + hₙ/2, yₙ + hₙk₁/2)',
+        'k₃ = f(xₙ + hₙ/2, yₙ + hₙk₂/2)',
+        'k₄ = f(xₙ + hₙ, yₙ + hₙk₃)',
+        'yₙ₊₁ = yₙ + hₙ · (k₁ + 2k₂ + 2k₃ + k₄) / 6',
+      ],
+      stageColumns: [['k1', 'k₁ · inicial'], ['k2', 'k₂ · media 1'], ['k3', 'k₃ · media 2'], ['k4', 'k₄ · final']],
+    },
+  ]);
+
   function validateNumber(name, value) {
     if (value === '' || value === null || value === undefined || !Number.isFinite(Number(value))) {
       throw new Error(`${name} debe ser un número finito.`);
@@ -191,7 +242,7 @@
     }
   }
 
-  function runMethod(name, derivative, exact, x0, y0, stepSize, xEnd) {
+  function runMethod(method, derivative, exact, x0, y0, stepSize, xEnd) {
     const direction = Math.sign(xEnd - x0);
     const rows = [];
     let x = x0;
@@ -212,23 +263,38 @@
       if (actualH === 0) throw new Error('El tamaño de paso es demasiado pequeño para avanzar desde este valor de x.');
 
       const stepNumber = rows.length + 1;
-      const k1 = evaluateFinite(derivative, { x, y }, `${name}, paso ${stepNumber}, pendiente inicial`);
       let predictor = null;
       let k2 = null;
+      let k3 = null;
+      let k4 = null;
       let nextY;
 
-      if (name === 'Heun') {
+      const k1 = evaluateFinite(derivative, { x, y }, `${method.name}, paso ${stepNumber}, k₁ (pendiente inicial)`);
+      if (method.key === 'heun') {
         predictor = y + actualH * k1;
         if (!Number.isFinite(predictor)) throw new Error(`Heun, paso ${stepNumber}: la predicción no es finita.`);
-        k2 = evaluateFinite(derivative, { x: nextX, y: predictor }, `${name}, paso ${stepNumber}, pendiente final`);
+        k2 = evaluateFinite(derivative, { x: nextX, y: predictor }, `Heun, paso ${stepNumber}, k₂`);
         nextY = y + actualH * (k1 + k2) / 2;
+      } else if (method.key === 'rk3') {
+        const midpointX = x + actualH / 2;
+        const midpointY = y + actualH * k1 / 2;
+        k2 = evaluateFinite(derivative, { x: midpointX, y: midpointY }, `RK3, paso ${stepNumber}, k₂`);
+        const finalStageY = y - actualH * k1 + 2 * actualH * k2;
+        k3 = evaluateFinite(derivative, { x: nextX, y: finalStageY }, `RK3, paso ${stepNumber}, k₃`);
+        nextY = y + actualH * (k1 + 4 * k2 + k3) / 6;
+      } else if (method.key === 'rk4') {
+        const midpointX = x + actualH / 2;
+        k2 = evaluateFinite(derivative, { x: midpointX, y: y + actualH * k1 / 2 }, `RK4, paso ${stepNumber}, k₂`);
+        k3 = evaluateFinite(derivative, { x: midpointX, y: y + actualH * k2 / 2 }, `RK4, paso ${stepNumber}, k₃`);
+        k4 = evaluateFinite(derivative, { x: nextX, y: y + actualH * k3 }, `RK4, paso ${stepNumber}, k₄`);
+        nextY = y + actualH * (k1 + 2 * k2 + 2 * k3 + k4) / 6;
       } else {
         nextY = y + actualH * k1;
       }
 
-      if (!Number.isFinite(nextY)) throw new Error(`${name}, paso ${stepNumber}: el siguiente valor de y no es finito.`);
+      if (!Number.isFinite(nextY)) throw new Error(`${method.name}, paso ${stepNumber}: el siguiente valor de y no es finito.`);
       const reference = exactAt(exact, nextX, nextY);
-      rows.push({ step: stepNumber, x, y, h: actualH, k1, predictor, k2, nextX, nextY, ...reference });
+      rows.push({ step: stepNumber, x, y, h: actualH, k1, predictor, k2, k3, k4, nextX, nextY, ...reference });
       x = nextX;
       y = nextY;
     }
@@ -262,11 +328,11 @@
         }
       }
 
-      return {
-        exactProvided: Boolean(exactFunction),
-        euler: runMethod('Euler', derivativeFunction, exactFunction, startX, startY, stepSize, endX),
-        heun: runMethod('Heun', derivativeFunction, exactFunction, startX, startY, stepSize, endX),
-      };
+      const methods = {};
+      for (const method of METHODS) {
+        methods[method.key] = runMethod(method, derivativeFunction, exactFunction, startX, startY, stepSize, endX);
+      }
+      return { exactProvided: Boolean(exactFunction), ...methods };
     } catch (error) {
       return { error: error instanceof Error ? error.message : 'No se pudo resolver el PVI.' };
     }
@@ -287,19 +353,27 @@
     return cell;
   }
 
-  function makeTable(title, subtitle, result, methodName, exactProvided) {
-    const section = document.createElement('article');
-    section.className = 'method-card';
+  function makeTable(method, result, exactProvided) {
+    const section = document.createElement('details');
+    section.className = 'method-card method-details';
 
-    const header = document.createElement('header');
-    const heading = document.createElement('h3');
-    heading.textContent = title;
-    const description = document.createElement('p');
-    description.textContent = subtitle;
-    header.append(heading, description);
+    const summary = document.createElement('summary');
+    const identity = document.createElement('span');
+    identity.className = 'method-identity';
+    const heading = makeCell('strong', method.name);
+    const order = makeCell('span', `Orden ${method.order} · ${method.stageColumns.length} ${method.stageColumns.length === 1 ? 'pendiente' : 'pendientes'}`);
+    order.className = 'method-order';
+    identity.append(heading, order);
+    summary.append(identity);
 
-    const tableScroll = document.createElement('div');
-    tableScroll.className = 'table-scroll';
+    const detailContent = document.createElement('div');
+    detailContent.className = 'method-content';
+    const description = makeCell('p', method.description);
+    description.className = 'method-description';
+    const formulas = document.createElement('div');
+    formulas.className = 'method-formulas';
+    for (const line of method.formulaLines) formulas.append(makeCell('code', line));
+
     const table = document.createElement('table');
     const tableHead = document.createElement('thead');
     const headerRow = document.createElement('tr');
@@ -308,11 +382,12 @@
       ['xₙ', (row) => formatNumber(row.x)],
       ['yₙ', (row) => formatNumber(row.y)],
       ['hₙ', (row) => formatNumber(row.h)],
-      ['k₁', (row) => formatNumber(row.k1)],
     ];
-    if (methodName === 'Heun') {
-      columns.push(['Predicción', (row) => formatNumber(row.predictor)]);
-      columns.push(['k₂', (row) => formatNumber(row.k2)]);
+    for (const [key, label] of method.stageColumns) {
+      columns.push([label, (row) => formatNumber(row[key])]);
+      if (method.key === 'heun' && key === 'k1') {
+        columns.push(['zₙ₊₁ · predicción', (row) => formatNumber(row.predictor)]);
+      }
     }
     columns.push(['xₙ₊₁', (row) => formatNumber(row.nextX)]);
     columns.push(['yₙ₊₁', (row) => formatNumber(row.nextY)]);
@@ -340,15 +415,20 @@
     }
 
     table.append(tableHead, body);
+    const tableScroll = document.createElement('div');
+    tableScroll.className = 'table-scroll';
     tableScroll.append(table);
-    section.append(header, tableScroll);
+    detailContent.append(description, formulas, tableScroll);
+    section.append(summary, detailContent);
     return section;
   }
 
-  function makeSummaryCard(title, result, exactProvided) {
+  function makeSummaryCard(method, result, exactProvided) {
     const card = document.createElement('article');
     card.className = 'summary-card';
-    const heading = makeCell('h3', title);
+    const heading = makeCell('h3', method.name);
+    const order = makeCell('p', `Orden ${method.order}`);
+    order.className = 'summary-order';
     const value = makeCell('p', formatNumber(result.final.y));
     value.className = 'summary-value';
     const details = document.createElement('div');
@@ -368,7 +448,7 @@
     const endpointLine = document.createElement('span');
     endpointLine.append(makeCell('strong', 'Punto final: '), document.createTextNode(`x = ${formatNumber(result.final.x)}`));
     details.append(referenceLine, errorLine, endpointLine);
-    card.append(heading, value, details);
+    card.append(heading, order, value, details);
     return card;
   }
 
@@ -381,6 +461,7 @@
     const summaryGrid = document.getElementById('summary-grid');
     const tablesGrid = document.getElementById('tables-grid');
     const referenceNote = document.getElementById('reference-note');
+    const slopeNote = document.getElementById('slope-note');
     const resultFootnote = document.getElementById('result-footnote');
 
     function clearOutput() {
@@ -390,6 +471,7 @@
       summaryGrid.replaceChildren();
       tablesGrid.replaceChildren();
       referenceNote.textContent = '';
+      slopeNote.textContent = '';
       resultFootnote.textContent = '';
     }
 
@@ -414,18 +496,15 @@
         return;
       }
 
-      summaryGrid.append(
-        makeSummaryCard('Euler', result.euler, result.exactProvided),
-        makeSummaryCard('Euler mejorado · Heun', result.heun, result.exactProvided),
-      );
-      tablesGrid.append(
-        makeTable('Método de Euler', 'Pendiente evaluada al inicio de cada paso.', result.euler, 'Euler', result.exactProvided),
-        makeTable('Euler mejorado · Heun', 'Promedio de la pendiente inicial y la pendiente predicha.', result.heun, 'Heun', result.exactProvided),
-      );
+      for (const method of METHODS) {
+        summaryGrid.append(makeSummaryCard(method, result[method.key], result.exactProvided));
+        tablesGrid.append(makeTable(method, result[method.key], result.exactProvided));
+      }
       referenceNote.textContent = result.exactProvided
         ? 'El error relativo compara cada aproximación con la solución exacta ingresada.'
         : 'Sin una solución exacta ingresada, no se calcula el error relativo.';
-      resultFootnote.textContent = 'Error relativo (%) = |(aproximación − valor exacto) / valor exacto| × 100. “—” indica que la fórmula exacta no se pudo evaluar en ese punto.';
+      slopeNote.textContent = 'Cada kᵢ es una pendiente f(x, y). En cada método se evalúa en distintos puntos; hₙ se aplica al combinar esas pendientes. Abre un método para ver sus fórmulas y pasos.';
+      resultFootnote.textContent = 'Error relativo (%) = |(aproximación − valor exacto) / valor exacto| × 100. “—” indica que la fórmula exacta no se pudo evaluar en ese punto o que el error relativo no está definido.';
       results.hidden = false;
     });
   }
