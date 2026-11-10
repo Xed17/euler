@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f6f8">
+    <title>Calculadora de EDO · Euler y Heun</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-header">
+        <p class="eyebrow">ANÁLISIS NUMÉRICO</p>
+        <h1>Calculadora de EDO</h1>
+        <p class="page-intro">Compara Euler y Euler mejorado paso a paso, con una solución exacta opcional.</p>
+      </header>
+
+      <form class="problem-card" id="solver-form" novalidate>
+        <div class="card-heading">
+          <div>
+            <h2>Problema de valor inicial</h2>
+            <p>Escribe la ecuación en la forma <code>y' = f(x, y)</code>.</p>
+          </div>
+          <span class="method-tag">2 métodos</span>
+        </div>
+
+        <div class="equation-fields">
+          <label class="field" for="derivative">
+            <span>Ecuación diferencial</span>
+            <input id="derivative" name="derivative" type="text" value="(x^2-y^2)/(x*y)" autocomplete="off" spellcheck="false" required>
+            <small>Usa x, y, +, −, *, /, ^, paréntesis y funciones sin, cos, tan, exp, ln, sqrt, abs.</small>
+          </label>
+          <label class="field" for="exact">
+            <span>Solución exacta <em>opcional</em></span>
+            <input id="exact" name="exact" type="text" value="sqrt(x^2/2 + 7/(2*x^2))" autocomplete="off" spellcheck="false">
+            <small>Escribe y como una expresión de x. Déjalo vacío si no la conoces.</small>
+          </label>
+        </div>
+
+        <fieldset class="initial-values">
+          <legend>Valores iniciales y recorrido</legend>
+          <div class="number-grid">
+            <label class="field" for="x0">
+              <span>x₀</span>
+              <input id="x0" name="x0" type="number" step="any" value="1" required>
+            </label>
+            <label class="field" for="y0">
+              <span>y₀</span>
+              <input id="y0" name="y0" type="number" step="any" value="2" required>
+            </label>
+            <label class="field" for="step">
+              <span>Paso h</span>
+              <input id="step" name="step" type="number" step="any" value="0.1" required>
+            </label>
+            <label class="field" for="x-end">
+              <span>Calcular hasta x</span>
+              <input id="x-end" name="xEnd" type="number" step="any" value="1.2" required>
+            </label>
+          </div>
+          <p class="field-note">El sentido de integración se determina con x₀ y el punto final. Si hace falta, el último paso se acorta. Máximo: 1&nbsp;000 pasos.</p>
+        </fieldset>
+
+        <details class="method-note">
+          <summary>¿Cómo funcionan los métodos?</summary>
+          <div class="formula-list">
+            <p><strong>Euler:</strong> yₙ₊₁ = yₙ + h·f(xₙ, yₙ)</p>
+            <p><strong>Euler mejorado (Heun):</strong> primero predice con Euler y luego promedia las pendientes inicial y predicha.</p>
+          </div>
+        </details>
+
+        <div class="form-footer">
+          <p>Los ángulos de las funciones trigonométricas se expresan en radianes.</p>
+          <button class="submit-button" type="submit">Resolver PVI <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+
+      <div class="feedback" id="error-message" role="alert" aria-live="assertive" hidden></div>
+      <section class="results" id="results" aria-labelledby="results-heading" aria-live="polite" hidden>
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">RESULTADOS</p>
+            <h2 id="results-heading">Comparación de métodos</h2>
+          </div>
+          <p class="reference-note" id="reference-note"></p>
+        </div>
+        <div class="summary-grid" id="summary-grid"></div>
+        <div class="tables-grid" id="tables-grid"></div>
+        <p class="result-footnote" id="result-footnote"></p>
+      </section>
+
+      <footer class="page-footer">Cálculo local en el navegador · Euler y Heun</footer>
+    </main>
+  </body>
+</html>
